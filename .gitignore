@@ -1,5 +1,6 @@
+.env
 venv/
 __pycache__/
-*.pyc
-.env
-voos_brasil.db
+*.db
+
+.vscode/

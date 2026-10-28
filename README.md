@@ -1,129 +1,176 @@
-# Análise de Voos no Brasil — Big Data em Python
+# ✈️ Análise de Voos no Brasil — Big Data em Python
 
-Projeto de ETL em Python que combina 3 fontes de dados sobre voos no Brasil
-(status/pontualidade, tráfego aéreo e preços), grava tudo em SQLite e
-alimenta um relatório no Power BI.
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
+![Pandas](https://img.shields.io/badge/Pandas-150458?logo=pandas&logoColor=white)
+![Power BI](https://img.shields.io/badge/Power%20BI-F2C811?logo=powerbi&logoColor=black)
 
-## Fontes de dados
+Projeto de ETL em Python focado em **quem vai comprar passagem**: coleta preços de passagens e status de voos no Brasil, grava tudo em SQLite e alimenta um relatório no Power BI.
 
-- **AviationStack** — status de voos, atrasos, rotas (100 req/mês grátis)
-- **OpenSky Network** — tráfego aéreo em tempo real (grátis, sem chave obrigatória)
-- **Ignav** — preços de passagens (1.000 requisições grátis, uso único)
+O foco é responder o que quem vai comprar passagem quer saber:
 
-## Como rodar (VS Code)
+- Qual é a opção **mais barata** para a minha rota e a minha data?
+- Em que **horário** o voo sai e chega? Tem **escala**? Onde?
+- A conexão é em **bilhetes separados** (mais risco)?
+- Quanto tempo de viagem? Chega só no dia seguinte?
+- Com quantos **dias de antecedência** costuma compensar comprar?
 
-1. Clone o repositório e abra a pasta no VS Code.
+---
+
+## 🧱 Como funciona
+
+```mermaid
+flowchart LR
+    A[Ignav API<br/>preços e itinerários] --> C[main.py<br/>ETL com pandas]
+    B[AviationStack API<br/>status dos voos] --> C
+    C --> D[(SQLite<br/>voos_brasil.db)]
+    D --> E[Power BI<br/>dashboard]
+```
+
+| Etapa | O que acontece |
+|---|---|
+| **Extract** | `extract/ignav.py` e `extract/aviationstack.py` consultam as APIs |
+| **Transform** | Os dados viram colunas prontas para análise: período do dia, duração em `5h35`, escalas, preço formatado, dias de antecedência, textos em português |
+| **Load** | `main.py` grava tudo no SQLite (`voos_brasil.db`) |
+| **Visualize** | O Power BI lê o banco, principalmente a view `vw_passagens_atuais` |
+
+## 🗂️ Fontes de dados
+
+| Fonte | O que traz | Limite do plano grátis |
+|---|---|---|
+| [Ignav](https://ignav.com/docs/one-way) | Preços, horários, escalas e duração | 1.000 requisições, **uso único** (não renova) |
+| [AviationStack](https://aviationstack.com/documentation) | Status dos voos (programado, cancelado...) e rotas | 100 requisições por mês |
+
+## 🚀 Como rodar (VS Code)
+
+**Pré-requisitos:** Python 3.10+ e chaves de API da [Ignav](https://ignav.com) e da [AviationStack](https://aviationstack.com).
+
+1. Abra a pasta do projeto no VS Code.
 2. Crie e ative um ambiente virtual:
-```bash
+   ```bash
    python -m venv venv
    # Windows:
    venv\Scripts\activate
    # macOS/Linux:
    source venv/bin/activate
-```
+   ```
 3. Instale as dependências:
-```bash
+   ```bash
    pip install -r requirements.txt
-```
-4. Copie `.env.example` para `.env` e preencha com suas chaves reais:
-```bash
+   ```
+4. Crie o arquivo `.env` a partir do modelo e preencha as chaves da AviationStack e da Ignav:
+   ```bash
+   # Windows:
+   copy .env.example .env
+   # macOS/Linux:
    cp .env.example .env
-```
-   O OpenSky funciona sem chave (limite menor); se quiser o limite maior,
-   crie uma conta OAuth2 em opensky-network.org e preencha
-   `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET`.
+   ```
+   **Não suba o `.env` pro GitHub** (já está no `.gitignore`).
 5. Crie o banco de dados (só precisa rodar uma vez):
-```bash
+   ```bash
    python db/init_db.py
-```
+   ```
+   Se você já tinha um `voos_brasil.db` de uma versão anterior, use `python db/init_db.py --recriar` (as colunas mudaram).
 6. Rode a coleta:
-```bash
+   ```bash
    python main.py
-```
+   ```
 
-Isso vai popular `voos_brasil.db` (SQLite) com os dados das três fontes.
-Rodando o `main.py` periodicamente (ex: 1x por dia, manualmente ou via
-Agendador de Tarefas / cron), você acumula histórico ao longo do tempo.
-Sempre que coletar dados novos, clique em **Atualizar** no Power BI Desktop
-pra trazer as linhas novas pro relatório.
+Isso vai popular `voos_brasil.db` (SQLite) com os dados das duas fontes. Rodando o `main.py` periodicamente (ex: 1x por dia, manualmente ou via Agendador de Tarefas / cron), você acumula histórico ao longo do tempo.
 
-## Estrutura
+### ⚙️ Personalização
+
+No `main.py`:
+
+- `ROTAS_PRECO`: rotas consultadas na Ignav (origem e destino em código IATA)
+- `DATA_PARTIDA_PRECO`: data do voo pesquisada (use uma data futura)
+- `AEROPORTOS_AVIATIONSTACK`: aeroportos consultados no AviationStack
+
+## 📁 Estrutura
 
 ```
 analise-voos-brasil/
-├── .env.example               # modelo de variáveis de ambiente (sem chaves reais)
+├── .env.example               # modelo das chaves de API
 ├── .gitignore
 ├── requirements.txt
-├── tema-aviacao-brasil.json    # tema visual do Power BI
-├── common/
-│   └── aeroportos.py            # coordenadas dos aeroportos + cálculo de distância
+├── main.py                    # orquestra a coleta e grava no SQLite
 ├── db/
-│   ├── schema.sql              # schema do banco
-│   └── init_db.py              # cria o banco + popula aeroportos
+│   ├── schema.sql             # tabelas e view
+│   └── init_db.py             # cria o banco + popula aeroportos
 ├── extract/
-│   ├── aviationstack.py        # status/pontualidade
-│   ├── opensky.py              # tráfego aéreo
-│   └── ignav.py                 # preços
-├── main.py                     # orquestra a coleta e grava no SQLite
-└── voos_brasil.db              # gerado localmente (não versionado)
+│   ├── aviationstack.py       # status dos voos
+│   └── ignav.py               # preços e detalhes da passagem
+└── voos_brasil.db             # criado após rodar init_db.py
 ```
 
-> `.env` e `voos_brasil.db` ficam de fora do Git (veja `.gitignore`) — o
-> primeiro por conter chaves de API, o segundo por ser gerado localmente a
-> cada máquina.
+## 📊 Modelo de dados
 
-## Conectando ao Power BI
+**`precos`**: cada linha é uma opção de passagem encontrada.
 
-Recomendado: **Obter Dados → Script Python**, usando `sqlite3` + `pandas`
-para ler as tabelas direto — sem precisar instalar driver ODBC em nenhuma
-máquina:
+| Coluna | Descrição |
+|---|---|
+| `origem`, `destino`, `data_partida` | Rota e data do voo |
+| `dias_antecedencia` | Quantos dias antes do voo o preço foi coletado |
+| `dia_semana_partida` | Dia da semana da partida |
+| `companhia_nome`, `numero_voo` | Companhia e voo (conexões: `LA3040 + LA2100`) |
+| `cabin_class` | Classe: Econômica, Econômica Premium, Executiva ou Primeira Classe |
+| `horario_partida`, `horario_chegada` | Hora local (`HH:MM`) |
+| `periodo_partida` | Madrugada, Manhã, Tarde ou Noite |
+| `chegada_dia_seguinte` | `1` se chega no dia seguinte |
+| `numero_escalas`, `aeroportos_escala` | Quantidade e aeroportos das escalas |
+| `duracao_min`, `duracao_formatada` | Duração total (por exemplo, `5h35`) |
+| `bilhetes_separados` | `Sim` = conexão em bilhetes separados (mais risco) |
+| `preco`, `preco_formatado`, `moeda` | Valor e texto pronto (`R$ 2.387,00`) |
+| `status_preco` | Situação do preço (por exemplo, `Verificado`) |
+
+**`voos_status`**: número do voo, companhia, origem, destino, horário previsto de partida e chegada, status (`Programado`, `Em voo`, `Pousou`, `Cancelado`, `Incidente` ou `Desviado`), duração e dia da semana.
+
+**Apoio**: `aeroportos`, `companhias`, `resumo_rotas`.
+
+**View `vw_passagens_atuais`**: só a coleta mais recente de cada rota e data, ordenada do mais barato.
+
+## 📈 Conectando ao Power BI
+
+No Power BI Desktop, vá em **Página Inicial → Obter dados → Mais… → Outros → Script do Python** e use:
 
 ```python
 import sqlite3
 import pandas as pd
 
-caminho_db = r"localizar na maquina a pasta \voos_brasil.db"
-conn = sqlite3.connect(caminho_db)
+conn = sqlite3.connect(r"C:\caminho\para\analise-voos-brasil\voos_brasil.db")
 
+passagens = pd.read_sql("SELECT * FROM vw_passagens_atuais", conn)
 voos_status = pd.read_sql("SELECT * FROM voos_status", conn)
-trafego = pd.read_sql("SELECT * FROM trafego", conn)
-precos = pd.read_sql("SELECT * FROM precos", conn)
 aeroportos = pd.read_sql("SELECT * FROM aeroportos", conn)
-companhias = pd.read_sql("SELECT * FROM companhias", conn)
 
 conn.close()
 ```
 
-Ajuste `caminho_db` para o caminho real em cada máquina. Em
-**Arquivo → Opções e Configurações → Opções → Script Python**, aponte o
-Power BI para o `python.exe` da sua `venv` (ex:
-`analise-voos-brasil\venv\Scripts\python.exe`) — assim ele usa o ambiente
-que já tem `pandas` instalado.
+> **Preço aparecendo 10x maior (`8560` em vez de `856`)?**
+> O Power BI em português lê o ponto decimal como separador de milhar. O script acima já converte o `preco` para reais inteiros. Para exibir o valor formatado, use também a coluna `preco_formatado` (texto pronto).
 
-### Tema visual
+### 🔄 Atualizando os dados
 
+1. Rode `python main.py` para gravar uma coleta nova no banco.
+2. No Power BI, clique em **Atualizar** (Página Inicial).
 
+### Ideias de visuais
 
-## Observações importantes
+- Cartão com o menor preço da rota selecionada
+- Barras com o preço médio por companhia ou por destino
+- Linha com preço por dias de antecedência
+- Matriz de preço por dia da semana e período do dia
+- Tabela com as opções, filtrando por escalas e por bilhetes separados
+- Participação das companhias por aeroporto (colunas 100% empilhadas)
+- Faixas de preço em roscas ("abaixo de R$ 500", "R$ 500 a 999", "acima de R$ 1.000")
 
-- **AviationStack**: free tier tem só 100 req/mês — o `main.py` já está
-  configurado para consultar poucos aeroportos por execução. Ajuste a lista
-  `AEROPORTOS_AVIATIONSTACK` conforme sua cota.
-- **Ignav**: as 1.000 requisições grátis **não renovam mensalmente** (é uma
-  cota única). Use com moderação — ideal para uma amostragem inicial de
-  preços, não para coleta contínua e ilimitada.
-- **OpenSky**: sem autenticação, o limite é menor (~400 créditos/dia), mas
-  já é suficiente para capturas periódicas de tráfego.
-- **Visuais de mapa no Power BI**: vêm desativados por padrão. Habilite em
-  Arquivo → Opções e Configurações → Opções → Global → Segurança.
-- **`duracao_min` e `distancia_km`**: calculados automaticamente a partir dos
-  horários (duração) e das coordenadas dos aeroportos brasileiros conhecidos
-  em `common/aeroportos.py` (distância). Ficam em branco se origem ou
-  destino não estiverem nessa lista.
-- **Tabela `aeronaves`**: populada automaticamente pelo `main.py` sempre que
-  a AviationStack retorna um `icao24` de aeronave.
-- **Coleta duplicada no mesmo dia**: `voos_status` e `precos` são "limpos"
-  (linhas do dia atual removidas) antes de cada nova inserção, então rodar
-  `main.py` várias vezes no mesmo dia atualiza a coleta em vez de duplicar.
-  `trafego` não passa por essa limpeza de propósito — várias capturas no
-  mesmo dia mostram a evolução do tráfego ao longo do dia.
+## ⚠️ Observações importantes
+
+- **AviationStack**: o plano grátis tem só 100 requisições por mês e usa HTTP, sem HTTPS. O `main.py` já consulta poucos aeroportos por execução; ajuste a lista `AEROPORTOS_AVIATIONSTACK` conforme sua cota.
+- **Ignav**: as 1.000 requisições grátis **não renovam mensalmente** (é uma cota única). Use com moderação, ideal para uma amostragem inicial de preços, não para coleta contínua e ilimitada.
+- Preços são uma foto do momento da coleta e podem mudar ou esgotar na hora da compra.
+- **Nunca suba o `.env` com suas chaves para o GitHub.** Ele já está no `.gitignore`.
+
+## 👤 Autor
+
+**Yan Augusto**, estudante de Ciência da Computação.
