@@ -1,9 +1,7 @@
-"""
-Extracao de precos de passagens (voos de ida - one-way) via Ignav.
-Docs: https://ignav.com/docs/one-way
+"""Consulta tarifas de ida (one-way) na API Ignav.
 
-Free tier: 1.000 requisicoes gratis (uso unico, nao mensal) -> use com
-moderacao. Cada chamada = 1 rota + 1 data.
+Documentação: https://ignav.com/docs/one-way
+Cada consulta corresponde a uma rota e uma data de partida.
 """
 
 import os
@@ -16,10 +14,7 @@ BASE_URL = "https://ignav.com/api/fares/one-way"
 
 
 def buscar_precos(origem: str, destino: str, data_partida: str, api_key: str) -> dict:
-    """
-    origem/destino: codigos IATA (ex: 'GRU', 'SSA')
-    data_partida: 'YYYY-MM-DD'
-    """
+    """Busca opções de ida usando códigos IATA e data no formato AAAA-MM-DD."""
     headers = {"X-Api-Key": api_key, "Content-Type": "application/json"}
     body = {
         "origin": origem,
@@ -48,6 +43,7 @@ CLASSE_CABINE = {
 }
 
 def _periodo_do_dia(hora: int) -> str:
+    """Agrupa o horário em faixas para facilitar os filtros do relatório."""
     if hora < 6:
         return "Madrugada"
     if hora < 12:
@@ -58,25 +54,28 @@ def _periodo_do_dia(hora: int) -> str:
 
 
 def _formatar_duracao(minutos) -> str | None:
+    """Apresenta a duração em horas e minutos (ex.: 5h35)."""
     if minutos is None:
         return None
     return f"{int(minutos) // 60}h{int(minutos) % 60:02d}"
 
 
 def _formatar_preco(valor: float | None, moeda: str | None) -> str | None:
-    """2387.65 -> 'R$ 2.387,65' (texto, para nao depender do separador do Power BI)."""
+    """Gera uma versão textual do preço para exibir sem erro de separador."""
     if valor is None:
         return None
     br = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"R$ {br}" if (moeda or "BRL") == "BRL" else f"{moeda} {br}"
 
 
-def  _sim_nao(valor) -> str | None:
+def _sim_nao(valor) -> str | None:
+    """Traduz um indicador booleano da API para Sim, Não ou valor ausente."""
     if valor is None:
         return None
     return "Sim" if valor else "Não"
 
 def _to_dt(valor: str | None) -> datetime | None:
+    """Lê um horário ISO; devolve None para valores ausentes ou inválidos."""
     try:
         return datetime.fromisoformat(valor) if valor else None
     except ValueError:
@@ -84,17 +83,20 @@ def _to_dt(valor: str | None) -> datetime | None:
 
 
 def precos_para_dataframe(resposta: dict) -> pd.DataFrame:
+    """Transforma itinerários da API nas colunas esperadas pela tabela precos."""
     agora = datetime.now(timezone.utc)
     registros = []
 
     for itinerario in resposta.get("itineraries", []):
         preco = itinerario.get("price", {}) or {}
         outbound = itinerario.get("outbound", {}) or {}
+        # Uma passagem pode ter vários trechos; o primeiro e o último
+        # fornecem os horários do itinerário completo.
         segmentos = outbound.get("segments", []) or []
         primeiro = segmentos[0] if segmentos else {}
         ultimo = segmentos[-1] if segmentos else {}
 
-        # Preco: sempre decimal com 2 casas (ex: 2387.65), nunca "238765"
+        # Guardamos o valor numérico para cálculos e outro formatado para exibição.
         valor = preco.get("amount")
         valor = round(float(valor), 2) if valor is not None else None
         moeda = preco.get("currency")
@@ -132,7 +134,7 @@ def precos_para_dataframe(resposta: dict) -> pd.DataFrame:
                 "aeroportos_escala": "/".join(s.get("arrival_airport") for s in segmentos[:-1]) or None,
                 "duracao_min": outbound.get("duration_minutes"),
                 "duracao_formatada": _formatar_duracao(outbound.get("duration_minutes")),
-                "bilhetes_separados": _sim_nao (itinerario.get("requires_self_transfer")),
+                "bilhetes_separados": _sim_nao(itinerario.get("requires_self_transfer")),
                 "preco": valor,
                 "preco_formatado": _formatar_preco(valor, moeda),
                 "moeda": moeda,

@@ -1,10 +1,8 @@
-"""
-Cria o banco SQLite (voos_brasil.db) a partir do schema.sql
-e popula a tabela de aeroportos com os principais aeroportos brasileiros.
+"""Prepara o SQLite a partir do schema.sql e cadastra os aeroportos.
 
-Rode uma unica vez (ou sempre que quiser recriar o banco do zero):
-    python db/init_db.py            # cria (ou completa) o banco
-    python db/init_db.py --recriar  # apaga e cria do zero
+Comandos:
+    python db/init_db.py            # cria ou completa sem apagar registros
+    python db/init_db.py --recriar  # APAGA o banco anterior e começa do zero
 """
 
 import sqlite3
@@ -14,7 +12,7 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent.parent / "voos_brasil.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
-# Principais aeroportos brasileiros usados no projeto
+# Catálogo inicial de aeroportos. Os códigos IATA são as chaves da tabela.
 AEROPORTOS_BRASIL = [
     # iata, nome, cidade, uf, pais, lat, lon, fuso
     ("GRU", "Aeroporto Internacional de Guarulhos", "Guarulhos", "SP", "Brasil", -23.4356, -46.4731, "America/Sao_Paulo"),
@@ -35,7 +33,9 @@ AEROPORTOS_BRASIL = [
 
 
 def criar_banco(recriar: bool = False) -> None:
+    """Cria a estrutura e insere aeroportos que ainda não estejam cadastrados."""
     if recriar and DB_PATH.exists():
+        # Atenção: esta opção também remove os preços e voos já coletados.
         DB_PATH.unlink()
         print("Banco antigo removido.")
 
@@ -43,6 +43,7 @@ def criar_banco(recriar: bool = False) -> None:
         with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
             conn.executescript(f.read())
 
+        # INSERT OR IGNORE permite repetir a inicialização sem duplicar aeroportos.
         conn.executemany(
             """
             INSERT OR IGNORE INTO aeroportos
@@ -58,5 +59,5 @@ def criar_banco(recriar: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    # Use '--recriar' se ja tinha um banco da versao anterior (colunas mudaram)
+    # --recriar é destrutivo: use somente quando quiser descartar o histórico.
     criar_banco(recriar="--recriar" in sys.argv)

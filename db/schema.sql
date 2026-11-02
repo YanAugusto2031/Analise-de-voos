@@ -1,4 +1,4 @@
--- ========== TABELAS DE DIMENSAO ==========
+-- Dados de referência: aeroportos e companhias usados nas análises.
 
 CREATE TABLE IF NOT EXISTS aeroportos (
     iata_code    TEXT PRIMARY KEY,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS companhias (
     tipo        TEXT
 );
 
--- ========== TABELAS DE FATO ==========
+-- Histórico das consultas: uma linha por voo ou opção de passagem coletada.
 
 CREATE TABLE IF NOT EXISTS voos_status (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS precos (
     ignav_id                TEXT
 );
 
--- ========== TABELA DE APOIO ==========
+-- Tabela de apoio para futuros resumos por rota e período.
 
 CREATE TABLE IF NOT EXISTS resumo_rotas (
     origem           TEXT REFERENCES aeroportos(iata_code),
@@ -76,14 +76,14 @@ CREATE TABLE IF NOT EXISTS resumo_rotas (
     PRIMARY KEY (origem, destino, periodo)
 );
 
--- ========== INDICES ==========
+-- Índices para agilizar filtros por data e rota.
 
 CREATE INDEX IF NOT EXISTS idx_voos_status_data ON voos_status(data_coleta);
 CREATE INDEX IF NOT EXISTS idx_voos_status_rota ON voos_status(origem, destino);
 CREATE INDEX IF NOT EXISTS idx_precos_rota_data ON precos(origem, destino, data_partida);
 
--- ========== VIEW PARA O POWER BI ==========
--- Apenas a coleta mais recente de cada rota/data, ja ordenada do mais barato.
+-- Consulta pronta para o Power BI: mantém a coleta mais recente de cada
+-- combinação de origem, destino e data de partida, ordenada por preço.
 
 CREATE VIEW IF NOT EXISTS vw_passagens_atuais AS
 SELECT

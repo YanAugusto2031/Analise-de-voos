@@ -1,12 +1,11 @@
-"""
-Dados e funcoes compartilhadas entre db/init_db.py e extract/aviationstack.py:
-lista de aeroportos brasileiros (com coordenadas) e calculo de distancia
-entre dois pontos (formula de haversine).
+"""Catálogo auxiliar de aeroportos e cálculo de distância em linha reta.
+
+A função distancia_km pode ser reutilizada por futuras análises de rotas.
 """
 
 import math
 
-# iata, nome, cidade, uf, pais, lat, lon, fuso
+# Ordem dos campos: IATA, nome, cidade, UF, país, latitude, longitude e fuso.
 AEROPORTOS_BRASIL = [
     ("GRU", "Aeroporto Internacional de Guarulhos", "Guarulhos", "SP", "Brasil", -23.4356, -46.4731, "America/Sao_Paulo"),
     ("CGH", "Aeroporto de Congonhas", "São Paulo", "SP", "Brasil", -23.6266, -46.6553, "America/Sao_Paulo"),
@@ -24,14 +23,15 @@ AEROPORTOS_BRASIL = [
     ("VCP", "Aeroporto Internacional de Viracopos", "Campinas", "SP", "Brasil", -23.0074, -47.1345, "America/Sao_Paulo"),
 ]
 
-# Lookup rapido: iata -> (lat, lon)
+# Acesso direto às coordenadas a partir do código IATA.
 COORDENADAS = {linha[0]: (linha[5], linha[6]) for linha in AEROPORTOS_BRASIL}
 
 
 def distancia_km(origem_iata: str | None, destino_iata: str | None) -> float | None:
-    """Distancia em linha reta (haversine) entre dois aeroportos conhecidos.
-    Retorna None se algum dos codigos IATA nao estiver no dicionario COORDENADAS
-    (ex: aeroporto fora do Brasil, ainda nao cadastrado)."""
+    """Calcula a distância entre dois aeroportos cadastrados, em quilômetros.
+
+    Retorna None se algum dos códigos IATA não estiver no catálogo.
+    """
     if not origem_iata or not destino_iata:
         return None
     if origem_iata not in COORDENADAS or destino_iata not in COORDENADAS:
@@ -40,7 +40,7 @@ def distancia_km(origem_iata: str | None, destino_iata: str | None) -> float | N
     lat1, lon1 = COORDENADAS[origem_iata]
     lat2, lon2 = COORDENADAS[destino_iata]
 
-    R = 6371.0  # raio da Terra em km
+    R = 6371.0  # Raio médio da Terra, em quilômetros.
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)

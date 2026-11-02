@@ -1,9 +1,7 @@
-"""
-Orquestra a coleta diaria: AviationStack (status dos voos) e
-Ignav (precos de passagens), gravando tudo no SQLite.
+"""Ponto de entrada da coleta de voos e de preços de passagens.
 
-Uso:
-    python main.py
+Consulta as duas APIs e salva os resultados no banco SQLite do projeto.
+Para executar: python main.py
 """
 
 import os
@@ -17,34 +15,38 @@ from extract.ignav import buscar_precos, precos_para_dataframe
 
 DB_PATH = Path(__file__).parent / "voos_brasil.db"
 
-# Aeroportos consultados no AviationStack. Como o free tier tem so 100
-# req/mes, revezar 2-3 aeroportos por dia e suficiente pra nao estourar.
+# Cada aeroporto gera uma consulta à AviationStack. Ajuste a lista de acordo
+# com a cota de requisições disponível na conta da equipe.
 AEROPORTOS_AVIATIONSTACK = ["GRU", "GIG", "SSA"]
 
-# Rotas consultadas na Ignav (origem, destino). Ajuste conforme o
-# universo de aeroportos que te interessa.
+# Rotas pesquisadas na Ignav: cada par representa origem e destino (IATA).
+# Cada rota consome uma chamada da API por execução.
 ROTAS_PRECO = [
     ("GRU", "SSA"),
     ("GRU", "GIG"),
     ("GRU", "BSB"),
     ("SSA", "GIG"),
 ]
-DATA_PARTIDA_PRECO = "2026-11-01"  # ajuste para uma data futura fixa ou dinamica
+DATA_PARTIDA_PRECO = "2026-12-31"  # Data pesquisada; atualize antes da coleta, se necessário.
 
 
 def coletar_aviationstack(conn: sqlite3.Connection, api_key: str) -> None:
+    """Consulta os aeroportos configurados e acrescenta os voos ao histórico."""
     for aeroporto in AEROPORTOS_AVIATIONSTACK:
         try:
             voos = buscar_voos_por_aeroporto(aeroporto, api_key)
             df = voos_para_dataframe(voos)
             if not df.empty:
+                # append mantém as coletas anteriores para análise histórica.
                 df.to_sql("voos_status", conn, if_exists="append", index=False)
             print(f"[AviationStack] {aeroporto}: {len(df)} voos gravados.")
         except Exception as exc:
+            # Um aeroporto com erro não impede a consulta dos seguintes.
             print(f"[AviationStack] Erro em {aeroporto}: {exc}")
 
 
 def coletar_ignav(conn: sqlite3.Connection, api_key: str) -> None:
+    """Consulta preços por rota e os acrescenta ao banco existente."""
     for origem, destino in ROTAS_PRECO:
         try:
             resposta = buscar_precos(origem, destino, DATA_PARTIDA_PRECO, api_key)
@@ -57,6 +59,7 @@ def coletar_ignav(conn: sqlite3.Connection, api_key: str) -> None:
 
 
 def main() -> None:
+    """Carrega as chaves, verifica o banco e executa as duas coletas."""
     load_dotenv()
 
     if not DB_PATH.exists():
