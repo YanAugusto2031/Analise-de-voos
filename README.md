@@ -231,7 +231,3 @@ Eles verificam a conversão de preços e status, os parâmetros das requisiçõe
 - Evite `--recriar` se houver dados que precisam ser mantidos.
 - Rode os testes depois de editar a transformação das APIs.
 - Como `voos_brasil.db` é ignorado pelo Git, combine com a equipe como compartilhar uma cópia do banco quando necessário.
-
-## Autor
-
-**Yan Augusto** — estudante de Ciência da Computação.
