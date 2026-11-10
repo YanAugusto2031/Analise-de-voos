@@ -83,8 +83,6 @@ AVIATIONSTACK_API_KEY=sua_chave_aviationstack_aqui
 IGNAV_API_KEY=sua_chave_ignav_aqui
 ```
 
-**Importante:** o arquivo `.env` está no `.gitignore`; não compartilhe as credenciais no repositório ou em arquivos ZIP. O `.env.example` é apenas um modelo, sem segredos.
-
 ### 3. Verificar ou preparar o banco
 
 O pacote pode incluir um `voos_brasil.db` com dados já coletados. Se esse arquivo estiver presente e for válido, **não é necessário recriá-lo** para consultar os registros.
@@ -148,8 +146,6 @@ Analise-de-voos/
 └── voos_brasil.db               # banco local (se incluído ou inicializado)
 ```
 
-`venv/` e `.env` são arquivos locais, não fazem parte do pacote distribuído. O banco `.db` é ignorado pelo Git, mesmo que uma cópia seja enviada à equipe separadamente.
-
 **Para atualizar o catálogo de aeroportos:** a inicialização usa a lista de `db/init_db.py`. O arquivo `common/common/aeroportos.py` mantém um catálogo auxiliar para cálculos e não atualiza automaticamente a tabela do banco.
 
 ## O que existe no banco de dados
@@ -204,8 +200,6 @@ Selecione as tabelas exibidas pelo Power BI e configure os visuais desejados. Pa
 
 **Se o preço aparecer multiplicado ou com casas decimais erradas**, confira o tipo da coluna `preco` e a configuração regional de separadores decimais no Power BI. O script acima **não converte nem corrige automaticamente** os valores. Use `preco_formatado` quando precisar de um texto já formatado, mas prefira `preco` para calcular médias e mínimos.
 
-Sugestões de análises: menor tarifa por rota, preço médio por companhia, distribuição por número de escalas e valores por dias de antecedência.
-
 ## Testando antes de compartilhar
 
 Os testes incluídos usam respostas simuladas das APIs, sem consumir a cota das contas. Com as dependências instaladas, execute:
@@ -224,10 +218,3 @@ Eles verificam a conversão de preços e status, os parâmetros das requisiçõe
 - **API sem resultados:** confira as datas, os aeroportos, as cotas e os avisos retornados pelo provedor. Nem toda rota ou data terá tarifas disponíveis.
 - **Power BI não encontra o banco:** ajuste `caminho_banco` para o local real do seu arquivo `.db`.
 
-## Cuidados para trabalhar em equipe
-
-- Mantenha os nomes das colunas e a estrutura SQLite compatíveis com as consultas existentes.
-- Não publique `.env`, chaves de API nem a pasta `venv/`.
-- Evite `--recriar` se houver dados que precisam ser mantidos.
-- Rode os testes depois de editar a transformação das APIs.
-- Como `voos_brasil.db` é ignorado pelo Git, combine com a equipe como compartilhar uma cópia do banco quando necessário.
