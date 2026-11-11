@@ -216,5 +216,5 @@ Eles verificam a conversão de preços e status, os parâmetros das requisiçõe
 - **`KeyError: 'IGNAV_API_KEY'` ou `'AVIATIONSTACK_API_KEY'`:** confira os nomes das variáveis no `.env` e se o comando está sendo executado na pasta do projeto.
 - **`Banco nao encontrado`:** execute `python db/init_db.py` antes de `python main.py`.
 - **API sem resultados:** confira as datas, os aeroportos, as cotas e os avisos retornados pelo provedor. Nem toda rota ou data terá tarifas disponíveis.
-- **Power BI não encontra o banco:** ajuste `caminho_banco` para o local real do seu arquivo `.db`.
+- **Power BI não encontra o banco:** ajuste `caminho_banco` para o local real do seu arquivo `.db`
 
