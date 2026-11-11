@@ -1,4 +1,4 @@
-# ✈️ Análise de Voos no Brasil
+# ✈️ Análise de Voos no Brasil.
 
 Projeto em Python para coletar **preços de passagens** e **status de voos**, guardar essas informações em um banco SQLite e explorá-las com pandas ou Power BI.
 
